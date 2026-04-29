@@ -2,32 +2,14 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase';
 import { sendWhatsAppMessage } from '../../../services/whatsapp';
 
-// 1. GET: Webhook Verification (Meta check)
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const mode = searchParams.get('hub.mode');
-  const token = searchParams.get('hub.verify_token');
-  const challenge = searchParams.get('hub.challenge');
-
-  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
-
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    return new Response(challenge, { status: 200 });
-  }
-
-  return new Response('Verification failed', { status: 403 });
-}
-
-// 2. POST: Handle Incoming Messages
 export async function POST(req: Request) {
   const body = await req.json();
+  console.log("📩 Incoming Webhook Body:", JSON.stringify(body, null, 2)); // Incoming messages
+
   const supabase = createClient();
 
   try {
-    // Extracting message details from WhatsApp JSON
-    const entry = body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const value = changes?.value;
+    const value = body.entry?.[0]?.changes?.[0]?.value;
     const message = value?.messages?.[0];
 
     if (message) {
@@ -35,38 +17,45 @@ export async function POST(req: Request) {
       const senderNumber = message.from;
       const incomingText = message.text.body.toLowerCase().trim();
 
-      // Step A: Find the SME Owner (User) from profiles table
-      const { data: profile } = await supabase
+      console.log(`🔍 Searching profile for Phone ID: ${incomingPhoneId}`);
+
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('user_id, whatsapp_access_token')
         .eq('whatsapp_phone_number_id', incomingPhoneId)
         .single();
 
-      if (profile) {
-        // Step B: Search for a matching Keyword Rule
-        const { data: rule } = await supabase
-          .from('automation_rules')
-          .select('reply_text')
-          .eq('keyword', incomingText)
-          .eq('user_id', profile.user_id)
-          .single();
-
-        // Default reply if no keyword matches
-        const finalReply = rule ? rule.reply_text : "Thank you for your message! Our team will contact you soon.";
-
-        // Step C: Send the reply back to the customer
-        await sendWhatsAppMessage(
-          senderNumber,
-          finalReply,
-          incomingPhoneId,
-          profile.whatsapp_access_token
-        );
+      if (!profile) {
+        console.log("❌ Profile not found in database!");
+        return NextResponse.json({ status: 'profile_missing' });
       }
+
+      console.log(`✅ Profile found for User ID: ${profile.user_id}`);
+
+      const { data: rule } = await supabase
+        .from('automation_rules')
+        .select('reply_text')
+        .eq('keyword', incomingText)
+        .eq('user_id', profile.user_id)
+        .single();
+
+      const finalReply = rule ? rule.reply_text : "Default Reply: Thank you!";
+      console.log(`🤖 Reply matched: ${finalReply}`);
+
+      // WhatsApp API Response  
+      const waResponse = await sendWhatsAppMessage(
+        senderNumber,
+        finalReply,
+        incomingPhoneId,
+        profile.whatsapp_access_token
+      );
+
+      console.log("🚀 WhatsApp API Response:", JSON.stringify(waResponse, null, 2));
     }
 
     return NextResponse.json({ status: 'success' });
   } catch (error) {
-    console.error("Webhook Error:", error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("🔥 Webhook Crash:", error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
