@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, message, Layout, Menu, Card, Row, Col, Statistic, Typography, ConfigProvider, Switch } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, ThunderboltOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, ThunderboltOutlined, MessageOutlined, RobotOutlined, TeamOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -143,6 +143,7 @@ export default function Dashboard() {
     const menuItems = [
         { key: '/dashboard', icon: <AppstoreOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
         { key: '/inbox', icon: <MessageOutlined />, label: <Link href="/inbox">Team Inbox</Link> },
+        { key: '/customers', icon: <TeamOutlined />, label: <Link href="/customers">Customers</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">Settings</Link> },
         { type: 'divider' as const },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }
