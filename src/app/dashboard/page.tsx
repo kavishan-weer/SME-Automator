@@ -142,6 +142,7 @@ export default function Dashboard() {
 
     const menuItems = [
         { key: '/dashboard', icon: <AppstoreOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
+        { key: '/inbox', icon: <MessageOutlined />, label: <Link href="/inbox">Team Inbox</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">Settings</Link> },
         { type: 'divider' as const },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }

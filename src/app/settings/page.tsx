@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Form, Input, Button, Card, Typography, message, Spin, Layout, Menu, ConfigProvider, Tooltip, Tag, Divider } from 'antd';
-import { SaveOutlined, SettingOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, PhoneOutlined } from '@ant-design/icons';
+import { SaveOutlined, SettingOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, AppstoreOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, PhoneOutlined, MessageOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -75,6 +75,7 @@ export default function SettingsPage() {
 
     const menuItems = [
         { key: '/dashboard', icon: <AppstoreOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
+        { key: '/inbox', icon: <MessageOutlined />, label: <Link href="/inbox">Team Inbox</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">Settings</Link> },
         { type: 'divider' as const },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }
