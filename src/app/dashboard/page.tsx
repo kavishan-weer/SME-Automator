@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message, Layout, Menu, Card, Row, Col, Statistic, Typography, ConfigProvider } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Layout, Menu, Card, Row, Col, Statistic, Typography, ConfigProvider, Switch } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, ThunderboltOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
@@ -89,7 +89,24 @@ export default function Dashboard() {
             title: 'Reply Message', 
             dataIndex: 'reply_text', 
             key: 'reply_text',
-            render: (text: string) => <span className="text-[#3b4a54]">{text}</span>
+            ellipsis: true,
+            render: (text: string) => <span className="text-[#3b4a54] truncate block max-w-xs xl:max-w-md">{text}</span>
+        },
+        {
+            title: 'Status',
+            key: 'status',
+            width: 100,
+            render: (_: any, record: any) => (
+                <Switch 
+                    defaultChecked={true}
+                    checkedChildren="ON" 
+                    unCheckedChildren="OFF"
+                    className="bg-[#d1d7db] [&.ant-switch-checked]:bg-[#25D366]"
+                    onChange={(checked) => {
+                        messageApi.success(`Rule "${record.keyword}" is now ${checked ? 'ON' : 'OFF'}`);
+                    }}
+                />
+            )
         },
         {
             title: 'Action',
@@ -190,7 +207,7 @@ export default function Dashboard() {
                         style={{ height: '72px', padding: '0 24px', background: '#f0f2f5', lineHeight: 'normal' }}
                     >
                         <div>
-                            <Title level={4} className="!m-0 !text-[#111b21] hidden sm:block">Rules Management</Title>
+                            <Title level={4} className="!m-0 !text-[#111b21] hidden sm:block">Automation Rules</Title>
                             <Text className="text-[#54656f] text-sm hidden sm:block">Overview and control of your active automations.</Text>
                         </div>
                         <Button 
