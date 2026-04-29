@@ -364,7 +364,7 @@ export default function InboxPage() {
                                     <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 z-10">
                                         {loadingMessages ? (
                                             <div className="flex-1 flex items-center justify-center">
-                                                <Spin indicator={<LoadingOutlined className="text-[#25D366] text-3xl" />} tip="Loading messages..." />
+                                                <Spin indicator={<LoadingOutlined className="text-[#25D366] text-3xl" />} description="Loading messages..." />
                                             </div>
                                         ) : chatHistory.length === 0 ? (
                                             <div className="flex-1 flex items-center justify-center">
