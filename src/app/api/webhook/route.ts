@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../lib/supabase';
+import { createAdminClient } from '../../../lib/supabaseAdmin';
 import { sendWhatsAppMessage } from '../../../services/whatsapp';
 
 export async function POST(req: Request) {
   const body = await req.json();
   console.log("📩 Incoming Webhook Body:", JSON.stringify(body, null, 2)); // Incoming messages
 
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   try {
     const value = body.entry?.[0]?.changes?.[0]?.value;
