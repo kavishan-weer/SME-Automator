@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Table, Button, Modal, Form, Input, message, Layout, Menu, Card, Row, Col, Statistic, Typography, ConfigProvider, Switch } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, ThunderboltOutlined, MessageOutlined, RobotOutlined, TeamOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
@@ -16,11 +16,11 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(false);
     const [messageApi, contextHolder] = message.useMessage();
     
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const router = useRouter();
     const pathname = usePathname();
 
-    const fetchRules = async () => {
+    const fetchRules = useCallback(async () => {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -38,11 +38,11 @@ export default function Dashboard() {
             }
         }
         setLoading(false);
-    };
+    }, [supabase, messageApi]);
 
     useEffect(() => {
         fetchRules();
-    }, []);
+    }, [fetchRules]);
 
     const onAddRule = async (values: any) => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -131,8 +131,13 @@ export default function Dashboard() {
                                 messageApi.error("Unauthorized: Please log in.");
                                 return;
                             }
-                            await supabase.from('automation_rules').delete().eq('id', record.id).eq('user_id', user.id);
-                            fetchRules();
+                            const { error } = await supabase.from('automation_rules').delete().eq('id', record.id).eq('user_id', user.id);
+                            if (error) {
+                                messageApi.error("Failed to delete rule: " + error.message);
+                            } else {
+                                messageApi.success(`Rule "${record.keyword}" deleted successfully!`);
+                                fetchRules();
+                            }
                         }}
                     />
                 </div>
