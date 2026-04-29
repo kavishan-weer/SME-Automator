@@ -14,6 +14,7 @@ export default function Dashboard() {
     const [rules, setRules] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [messageApi, contextHolder] = message.useMessage();
     
     const supabase = createClient();
     const router = useRouter();
@@ -30,7 +31,7 @@ export default function Dashboard() {
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            if (error) message.error("Error fetching rules");
+            if (error) messageApi.error("Error fetching rules");
             else setRules(data || []);
         }
         setLoading(false);
@@ -44,7 +45,7 @@ export default function Dashboard() {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            message.error("Unauthorized: Please log in.");
+            messageApi.error("Unauthorized: Please log in.");
             return;
         }
 
@@ -57,9 +58,9 @@ export default function Dashboard() {
         ]);
 
         if (error) {
-            message.error("Failed to add Rule");
+            messageApi.error("Failed to add Rule");
         } else {
-            message.success("Rule added successfully!");
+            messageApi.success("Rule added successfully!");
             setIsModalOpen(false);
             fetchRules();
         }
@@ -97,7 +98,7 @@ export default function Dashboard() {
                         type="text"
                         icon={<EditOutlined />}
                         className="text-[#8696a0] hover:text-[#128C7E]"
-                        onClick={() => message.info('Edit feature coming soon!')}
+                        onClick={() => messageApi.info('Edit feature coming soon!')}
                     />
                     <Button
                         type="text"
@@ -107,7 +108,7 @@ export default function Dashboard() {
                         onClick={async () => {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (!user) {
-                                message.error("Unauthorized: Please log in.");
+                                messageApi.error("Unauthorized: Please log in.");
                                 return;
                             }
                             await supabase.from('automation_rules').delete().eq('id', record.id).eq('user_id', user.id);
@@ -156,6 +157,7 @@ export default function Dashboard() {
             }}
         >
             <Layout style={{ minHeight: '100vh' }} hasSider>
+                {contextHolder}
                 {/* Sidebar */}
                 <Sider 
                     width={260} 
@@ -236,7 +238,7 @@ export default function Dashboard() {
                         </Row>
 
                         {/* Rules Table */}
-                        <Card className="shadow-sm border border-[#d1d7db]/40 rounded-xl overflow-hidden" bodyStyle={{ padding: 0 }}>
+                        <Card className="shadow-sm border border-[#d1d7db]/40 rounded-xl overflow-hidden" styles={{ body: { padding: 0 } }}>
                             <div className="p-6 border-b border-[#d1d7db]/40 flex justify-between items-center bg-white">
                                 <Title level={5} className="!m-0 !text-[#111b21]">Active Automation Rules</Title>
                             </div>
