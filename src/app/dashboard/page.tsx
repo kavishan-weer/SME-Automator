@@ -155,9 +155,15 @@ export default function Dashboard() {
                 }
             }}
         >
-            <Layout style={{ minHeight: '100vh' }}>
+            <Layout style={{ minHeight: '100vh' }} hasSider>
                 {/* Sidebar */}
-                <Sider width={260} className="border-r border-[#d1d7db] shadow-sm hidden md:block">
+                <Sider 
+                    width={260} 
+                    theme="light"
+                    breakpoint="lg"
+                    collapsedWidth="0"
+                    className="border-r border-[#d1d7db] shadow-sm z-50"
+                >
                     <div className="p-6 flex items-center gap-3 border-b border-[#d1d7db]">
                         <div className="w-8 h-8 bg-[#25D366] rounded-lg flex items-center justify-center shadow-md">
                             <RobotOutlined className="text-white text-lg" />
@@ -173,24 +179,27 @@ export default function Dashboard() {
                 </Sider>
 
                 {/* Main Layout */}
-                <Layout>
-                    <Header className="flex justify-between items-center px-8 border-b border-[#d1d7db]/50 h-[72px]">
+                <Layout style={{ minWidth: 0 }}>
+                    <Header 
+                        className="flex justify-between items-center border-b border-[#d1d7db]/50" 
+                        style={{ height: '72px', padding: '0 24px', background: '#f0f2f5', lineHeight: 'normal' }}
+                    >
                         <div>
-                            <Title level={4} className="!m-0 !text-[#111b21]">Rules Management</Title>
-                            <Text className="text-[#54656f] text-sm">Overview and control of your active automations.</Text>
+                            <Title level={4} className="!m-0 !text-[#111b21] hidden sm:block">Rules Management</Title>
+                            <Text className="text-[#54656f] text-sm hidden sm:block">Overview and control of your active automations.</Text>
                         </div>
                         <Button 
                             type="primary" 
                             icon={<PlusOutlined />} 
                             onClick={() => setIsModalOpen(true)}
                             size="large"
-                            className="shadow-sm hover:shadow-md font-medium px-6 bg-[#25D366] hover:bg-[#1ebe5a] border-none"
+                            className="shadow-sm hover:shadow-md font-medium bg-[#25D366] hover:bg-[#1ebe5a] border-none ml-auto"
                         >
-                            Add New Rule
+                            <span className="hidden sm:inline">Add New Rule</span>
                         </Button>
                     </Header>
 
-                    <Content className="p-8 max-w-6xl w-full mx-auto">
+                    <Content className="p-4 sm:p-8 max-w-6xl w-full mx-auto" style={{ overflowX: 'auto' }}>
                         
                         {/* Statistics Cards */}
                         <Row gutter={[24, 24]} className="mb-8">
