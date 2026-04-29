@@ -28,11 +28,14 @@ export default function Dashboard() {
             const { data, error } = await supabase
                 .from('automation_rules')
                 .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
+                .eq('user_id', user.id);
 
-            if (error) messageApi.error("Error fetching rules");
-            else setRules(data || []);
+            if (error) {
+                console.error("Supabase Error:", error);
+                messageApi.error("Error fetching rules: " + error.message);
+            } else {
+                setRules(data || []);
+            }
         }
         setLoading(false);
     };
