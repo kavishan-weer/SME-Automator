@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react';
-import { Layout, Menu, Typography, ConfigProvider, Input, Button, Table, Avatar, Tag, Card } from 'antd';
-import { SettingOutlined, AppstoreOutlined, LogoutOutlined, RobotOutlined, MessageOutlined, SearchOutlined, DownloadOutlined, TeamOutlined } from '@ant-design/icons';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Layout, Menu, Typography, ConfigProvider, Input, Button, Table, Avatar, Tag, Card, Spin, Statistic, Row, Col, message } from 'antd';
+import { SettingOutlined, AppstoreOutlined, LogoutOutlined, RobotOutlined, MessageOutlined, SearchOutlined, DownloadOutlined, TeamOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -10,20 +10,77 @@ import Link from 'next/link';
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-// Mock Data
-const MOCK_CUSTOMERS = [
-    { id: '1', name: 'Alice Smith', phone: '+1 (555) 019-2834', tags: ['VIP', 'Active'], lastActive: 'Oct 24, 2026 - 10:42 AM', avatarBg: '#128C7E' },
-    { id: '2', name: 'John Doe', phone: '+1 (555) 982-1102', tags: ['New Lead'], lastActive: 'Oct 23, 2026 - 04:15 PM', avatarBg: '#34B7F1' },
-    { id: '3', name: 'Acme Corp', phone: '+44 20 7946 0958', tags: ['Enterprise', 'Needs Follow-up'], lastActive: 'Oct 20, 2026 - 09:00 AM', avatarBg: '#f59e0b' },
-    { id: '4', name: 'Sarah Connor', phone: '+1 (555) 443-9999', tags: ['Active'], lastActive: 'Oct 19, 2026 - 02:30 PM', avatarBg: '#10b981' },
-    { id: '5', name: 'Michael Scott', phone: '+1 (555) 123-4567', tags: ['Churned'], lastActive: 'Sep 15, 2026 - 11:20 AM', avatarBg: '#ef4444' },
-];
+// Deterministic avatar color from a string
+const AVATAR_COLORS = ['#128C7E', '#34B7F1', '#f59e0b', '#10b981', '#6366f1', '#ec4899', '#8b5cf6', '#14b8a6'];
+const getAvatarColor = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
+interface Contact {
+    id: string;
+    phone_number: string;
+    name: string | null;
+    user_id: string;
+    created_at: string;
+    last_message_at: string | null;
+    bot_active: boolean;
+}
 
 export default function CustomersPage() {
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const router = useRouter();
     const pathname = usePathname();
+    const [messageApi, contextHolder] = message.useMessage();
+
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState('');
+
+    const fetchContacts = useCallback(async () => {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from('contacts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching contacts:', error);
+            messageApi.error('Failed to load contacts: ' + error.message);
+        } else {
+            setContacts(data || []);
+        }
+        setLoading(false);
+    }, [supabase, messageApi]);
+
+    useEffect(() => {
+        fetchContacts();
+    }, [fetchContacts]);
+
+    // Format timestamp into readable date
+    const formatDate = (timestamp: string | null) => {
+        if (!timestamp) return '—';
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        }) + ' - ' + date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -43,47 +100,66 @@ export default function CustomersPage() {
         {
             title: 'Name / Phone Number',
             key: 'name',
-            render: (_: any, record: any) => (
-                <div className="flex items-center gap-4 py-2">
-                    <Avatar size={42} style={{ backgroundColor: record.avatarBg }} className="flex-shrink-0 text-[16px] font-medium shadow-sm">
-                        {record.name.charAt(0)}
-                    </Avatar>
-                    <div className="flex flex-col">
-                        <Text className="font-medium text-[#111b21]">{record.name}</Text>
-                        <Text className="text-[13px] text-[#54656f] mt-0.5">{record.phone}</Text>
+            render: (_: any, record: Contact) => {
+                const displayName = record.name || record.phone_number;
+                return (
+                    <div className="flex items-center gap-4 py-2">
+                        <Avatar size={42} style={{ backgroundColor: getAvatarColor(displayName) }} className="flex-shrink-0 text-[16px] font-medium shadow-sm">
+                            {displayName.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <div className="flex flex-col">
+                            <Text className="font-medium text-[#111b21]">{record.name || 'Unknown'}</Text>
+                            <Text className="text-[13px] text-[#54656f] mt-0.5">{record.phone_number}</Text>
+                        </div>
                     </div>
-                </div>
-            )
+                );
+            }
         },
         {
-            title: 'Tags / Labels',
-            key: 'tags',
-            dataIndex: 'tags',
-            render: (tags: string[]) => (
-                <div className="flex gap-2 flex-wrap">
-                    {tags.map(tag => {
-                        let color = 'default';
-                        if (tag === 'VIP') color = 'gold';
-                        if (tag === 'New Lead') color = 'blue';
-                        if (tag === 'Active') color = 'green';
-                        if (tag === 'Enterprise') color = 'purple';
-                        if (tag === 'Needs Follow-up') color = 'warning';
-                        if (tag === 'Churned') color = 'error';
-                        return <Tag color={color} key={tag} className="rounded-md border-none px-2.5 py-0.5">{tag}</Tag>;
-                    })}
-                </div>
+            title: 'Status',
+            key: 'status',
+            width: 160,
+            render: (_: any, record: Contact) => {
+                const hasRecentActivity = record.last_message_at &&
+                    (Date.now() - new Date(record.last_message_at).getTime()) < 7 * 24 * 60 * 60 * 1000; // 7 days
+
+                return (
+                    <div className="flex gap-2 flex-wrap">
+                        {hasRecentActivity ? (
+                            <Tag color="green" className="rounded-md border-none px-2.5 py-0.5">Active</Tag>
+                        ) : (
+                            <Tag color="default" className="rounded-md border-none px-2.5 py-0.5">Inactive</Tag>
+                        )}
+                        {record.bot_active ? (
+                            <Tag color="blue" className="rounded-md border-none px-2.5 py-0.5">Bot ON</Tag>
+                        ) : (
+                            <Tag color="warning" className="rounded-md border-none px-2.5 py-0.5">Bot OFF</Tag>
+                        )}
+                    </div>
+                );
+            }
+        },
+        {
+            title: 'First Seen',
+            key: 'created_at',
+            width: 200,
+            render: (_: any, record: Contact) => (
+                <Text className="text-[#54656f] whitespace-nowrap">{formatDate(record.created_at)}</Text>
             )
         },
         {
             title: 'Last Active',
-            dataIndex: 'lastActive',
-            key: 'lastActive',
-            render: (text: string) => <Text className="text-[#54656f] whitespace-nowrap">{text}</Text>
+            key: 'last_message_at',
+            width: 200,
+            render: (_: any, record: Contact) => (
+                <Text className="text-[#54656f] whitespace-nowrap">{formatDate(record.last_message_at)}</Text>
+            )
         },
         {
             title: 'Action',
             key: 'action',
-            render: (_: any, record: any) => (
+            width: 140,
+            render: (_: any, record: Contact) => (
                 <Button 
                     type="default" 
                     icon={<MessageOutlined />} 
@@ -96,11 +172,17 @@ export default function CustomersPage() {
         }
     ];
 
-    const filteredData = MOCK_CUSTOMERS.filter(c => 
-        c.name.toLowerCase().includes(searchText.toLowerCase()) || 
-        c.phone.includes(searchText) ||
-        c.tags.some(t => t.toLowerCase().includes(searchText.toLowerCase()))
+    // Local search filter — matches against name or phone number
+    const filteredData = contacts.filter(c =>
+        (c.name || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        c.phone_number.includes(searchText)
     );
+
+    // Stats
+    const activeCount = contacts.filter(c => {
+        return c.last_message_at &&
+            (Date.now() - new Date(c.last_message_at).getTime()) < 7 * 24 * 60 * 60 * 1000;
+    }).length;
 
     return (
         <ConfigProvider
@@ -133,6 +215,7 @@ export default function CustomersPage() {
             }}
         >
             <Layout style={{ minHeight: '100vh' }} hasSider>
+                {contextHolder}
                 {/* Sidebar */}
                 <Sider 
                     width={260} 
@@ -168,13 +251,47 @@ export default function CustomersPage() {
                     </Header>
 
                     <Content className="p-4 sm:p-8 max-w-7xl w-full mx-auto" style={{ overflowX: 'auto' }}>
+
+                        {/* Stats Row */}
+                        <Row gutter={[24, 24]} className="mb-8">
+                            <Col xs={24} sm={8}>
+                                <Card className="shadow-sm border border-[#d1d7db]/40 rounded-xl hover:shadow-md transition-shadow">
+                                    <Statistic
+                                        title={<span className="text-[#54656f] font-medium">Total Contacts</span>}
+                                        value={contacts.length}
+                                        prefix={<TeamOutlined className="text-[#25D366] mr-2" />}
+                                        styles={{ content: { color: '#111b21', fontWeight: 600 } }}
+                                    />
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <Card className="shadow-sm border border-[#d1d7db]/40 rounded-xl hover:shadow-md transition-shadow">
+                                    <Statistic
+                                        title={<span className="text-[#54656f] font-medium">Active (Last 7 Days)</span>}
+                                        value={activeCount}
+                                        prefix={<UserOutlined className="text-[#00a884] mr-2" />}
+                                        styles={{ content: { color: '#111b21', fontWeight: 600 } }}
+                                    />
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <Card className="shadow-sm border border-[#d1d7db]/40 rounded-xl hover:shadow-md transition-shadow">
+                                    <Statistic
+                                        title={<span className="text-[#54656f] font-medium">Bot Enabled</span>}
+                                        value={contacts.filter(c => c.bot_active).length}
+                                        prefix={<RobotOutlined className="text-[#34B7F1] mr-2" />}
+                                        styles={{ content: { color: '#111b21', fontWeight: 600 } }}
+                                    />
+                                </Card>
+                            </Col>
+                        </Row>
                         
                         <Card className="shadow-sm border border-[#d1d7db]/40 rounded-2xl overflow-hidden" styles={{ body: { padding: 0 } }}>
                             {/* Table Toolbar */}
                             <div className="p-5 border-b border-[#d1d7db]/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
                                 <Input 
                                     prefix={<SearchOutlined className="text-[#8696a0]" />} 
-                                    placeholder="Search by name, phone, or tags..." 
+                                    placeholder="Search by name or phone number..." 
                                     className="max-w-md h-[40px] bg-[#f0f2f5] border-none focus:bg-white focus:ring-2 focus:ring-[#25D366]/20 transition-all rounded-lg"
                                     value={searchText}
                                     onChange={e => setSearchText(e.target.value)}
@@ -193,8 +310,9 @@ export default function CustomersPage() {
                                 columns={columns}
                                 dataSource={filteredData}
                                 rowKey="id"
+                                loading={loading}
                                 pagination={{ pageSize: 10, className: 'px-6 py-4 !m-0 border-t border-[#d1d7db]/30 bg-white' }}
-                                locale={{ emptyText: 'No customers found.' }}
+                                locale={{ emptyText: searchText ? 'No contacts match your search.' : 'No contacts found. They appear automatically when someone messages you.' }}
                                 className="w-full whitespace-nowrap"
                             />
                         </Card>

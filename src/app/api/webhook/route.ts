@@ -61,6 +61,7 @@ export async function POST(req: Request) {
       const senderNumber = message.from;
       const incomingText = message.text.body.toLowerCase().trim();
       const originalText = message.text.body;
+      const profileName = value.contacts?.[0]?.profile?.name || null;
 
       console.log(`🔍 Searching profile for Phone ID: ${incomingPhoneId}`);
 
@@ -92,13 +93,14 @@ export async function POST(req: Request) {
         contactId = existingContact.id;
         botActive = existingContact.bot_active ?? true;
 
-        // Update last message info
+        // Update last message info and profile name
         await supabase
           .from('contacts')
           .update({
             last_message_at: new Date().toISOString(),
             last_message_snippet: originalText.substring(0, 100),
             unread_count: (existingContact as any).unread_count ? (existingContact as any).unread_count + 1 : 1,
+            ...(profileName ? { name: profileName } : {}),
           })
           .eq('id', contactId);
       } else {
@@ -107,7 +109,7 @@ export async function POST(req: Request) {
           .insert({
             phone_number: senderNumber,
             user_id: profile.user_id,
-            name: null,
+            name: profileName,
             last_message_at: new Date().toISOString(),
             last_message_snippet: originalText.substring(0, 100),
             unread_count: 1,
