@@ -60,6 +60,7 @@ export async function POST(req: Request) {
       const incomingPhoneId = value.metadata.phone_number_id;
       const senderNumber = message.from;
       const incomingText = message.text.body.toLowerCase().trim();
+      const originalText = message.text.body;
 
       console.log(`🔍 Searching profile for Phone ID: ${incomingPhoneId}`);
 
@@ -76,25 +77,103 @@ export async function POST(req: Request) {
 
       console.log(`✅ Profile found for User ID: ${profile.user_id}`);
 
-      const { data: rule } = await supabase
-        .from('automation_rules')
-        .select('reply_text')
-        .eq('keyword', incomingText)
+      // --- Upsert contact ---
+      const { data: existingContact } = await supabase
+        .from('contacts')
+        .select('id, bot_active')
+        .eq('phone_number', senderNumber)
         .eq('user_id', profile.user_id)
         .single();
 
-      const finalReply = rule ? rule.reply_text : "Default Reply: Thank you!";
-      console.log(`🤖 Reply matched: ${finalReply}`);
+      let contactId: string;
+      let botActive = true;
 
-      // WhatsApp API Response  
-      const waResponse = await sendWhatsAppMessage(
-        senderNumber,
-        finalReply,
-        incomingPhoneId,
-        profile.whatsapp_access_token
-      );
+      if (existingContact) {
+        contactId = existingContact.id;
+        botActive = existingContact.bot_active ?? true;
 
-      console.log("🚀 WhatsApp API Response:", JSON.stringify(waResponse, null, 2));
+        // Update last message info
+        await supabase
+          .from('contacts')
+          .update({
+            last_message_at: new Date().toISOString(),
+            last_message_snippet: originalText.substring(0, 100),
+            unread_count: (existingContact as any).unread_count ? (existingContact as any).unread_count + 1 : 1,
+          })
+          .eq('id', contactId);
+      } else {
+        const { data: newContact, error: contactErr } = await supabase
+          .from('contacts')
+          .insert({
+            phone_number: senderNumber,
+            user_id: profile.user_id,
+            name: null,
+            last_message_at: new Date().toISOString(),
+            last_message_snippet: originalText.substring(0, 100),
+            unread_count: 1,
+            bot_active: true,
+          })
+          .select('id')
+          .single();
+
+        if (contactErr || !newContact) {
+          console.error("❌ Failed to create contact:", contactErr);
+          return NextResponse.json({ status: 'contact_creation_failed' });
+        }
+        contactId = newContact.id;
+      }
+
+      // --- Log the incoming message ---
+      await supabase.from('messages').insert({
+        contact_id: contactId,
+        user_id: profile.user_id,
+        direction: 'incoming',
+        body: originalText,
+      });
+
+      console.log(`💬 Incoming message logged for contact: ${contactId}`);
+
+      // --- Only auto-reply if bot is active for this contact ---
+      if (botActive) {
+        const { data: rule } = await supabase
+          .from('automation_rules')
+          .select('reply_text')
+          .eq('keyword', incomingText)
+          .eq('user_id', profile.user_id)
+          .single();
+
+        const finalReply = rule ? rule.reply_text : "Default Reply: Thank you!";
+        console.log(`🤖 Reply matched: ${finalReply}`);
+
+        // WhatsApp API Response  
+        const waResponse = await sendWhatsAppMessage(
+          senderNumber,
+          finalReply,
+          incomingPhoneId,
+          profile.whatsapp_access_token
+        );
+
+        console.log("🚀 WhatsApp API Response:", JSON.stringify(waResponse, null, 2));
+
+        // --- Log the outgoing auto-reply ---
+        await supabase.from('messages').insert({
+          contact_id: contactId,
+          user_id: profile.user_id,
+          direction: 'outgoing',
+          body: finalReply,
+        });
+
+        // Update contact snippet with the reply
+        await supabase
+          .from('contacts')
+          .update({
+            last_message_at: new Date().toISOString(),
+            last_message_snippet: finalReply.substring(0, 100),
+          })
+          .eq('id', contactId);
+      } else {
+        console.log("🔇 Bot is OFF for this contact — skipping auto-reply.");
+      }
     }
 
     return NextResponse.json({ status: 'success' });
