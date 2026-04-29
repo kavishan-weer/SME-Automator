@@ -200,7 +200,7 @@ export default function Dashboard() {
                                         title={<span className="text-[#54656f] font-medium">Total Rules</span>}
                                         value={rules.length} 
                                         prefix={<RobotOutlined className="text-[#25D366] mr-2" />} 
-                                        valueStyle={{ color: '#111b21', fontWeight: 600 }}
+                                        styles={{ content: { color: '#111b21', fontWeight: 600 } }}
                                     />
                                 </Card>
                             </Col>
@@ -210,7 +210,7 @@ export default function Dashboard() {
                                         title={<span className="text-[#54656f] font-medium">Active Replies</span>}
                                         value={rules.length > 0 ? rules.length * 12 : 0} 
                                         prefix={<ThunderboltOutlined className="text-[#00a884] mr-2" />} 
-                                        valueStyle={{ color: '#111b21', fontWeight: 600 }}
+                                        styles={{ content: { color: '#111b21', fontWeight: 600 } }}
                                     />
                                 </Card>
                             </Col>
@@ -220,7 +220,7 @@ export default function Dashboard() {
                                         title={<span className="text-[#54656f] font-medium">Messages Sent</span>}
                                         value={rules.length > 0 ? rules.length * 145 : 0} 
                                         prefix={<MessageOutlined className="text-[#34B7F1] mr-2" />} 
-                                        valueStyle={{ color: '#111b21', fontWeight: 600 }}
+                                        styles={{ content: { color: '#111b21', fontWeight: 600 } }}
                                     />
                                 </Card>
                             </Col>
