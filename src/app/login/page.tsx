@@ -13,6 +13,7 @@ export default function LoginPage() {
     const supabase = createClient();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [messageApi, contextHolder] = message.useMessage();
 
     const onFinish = async (values: any) => {
         setLoading(true);
@@ -24,10 +25,10 @@ export default function LoginPage() {
         });
 
         if (error) {
-            message.error("Login Failed: " + error.message);
+            messageApi.error("Login Failed: " + error.message);
             setLoading(false);
         } else {
-            message.success("Successfully Logged In");
+            messageApi.success("Successfully Logged In");
             router.push('/dashboard')
         }
     };
@@ -65,6 +66,7 @@ export default function LoginPage() {
             }}
         >
             <div className="flex justify-center items-center min-h-screen bg-[#f0f2f5] px-4 font-sans text-[#111b21] relative overflow-hidden">
+                {contextHolder}
                 {/* Subtle top green accent bar similar to WhatsApp Web */}
                 <div className="absolute top-0 left-0 w-full h-[222px] bg-[#00a884] z-0" />
 
