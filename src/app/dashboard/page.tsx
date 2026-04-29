@@ -40,11 +40,16 @@ export default function Dashboard() {
     const onAddRule = async (values: any) => {
         const { data: { user } } = await supabase.auth.getUser();
 
+        if (!user) {
+            message.error("Unauthorized: Please log in.");
+            return;
+        }
+
         const { error } = await supabase.from('automation_rules').insert([
             {
                 keyword: values.keyword.toLowerCase().trim(),
                 reply_text: values.reply_text,
-                user_id: user?.id
+                user_id: user.id
             }
         ]);
 
@@ -70,7 +75,12 @@ export default function Dashboard() {
                     danger
                     icon={<DeleteOutlined />}
                     onClick={async () => {
-                        await supabase.from('automation_rules').delete().eq('id', record.id);
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) {
+                            message.error("Unauthorized: Please log in.");
+                            return;
+                        }
+                        await supabase.from('automation_rules').delete().eq('id', record.id).eq('user_id', user.id);
                         fetchRules();
                     }}
                 >
