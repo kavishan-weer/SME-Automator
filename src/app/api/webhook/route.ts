@@ -9,8 +9,7 @@ export async function GET(req: Request) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
-  // ඔයා කැමති Verify Token එකක් මෙතන දාන්න (උදා: "MY_SECRET_TOKEN")
-  const VERIFY_TOKEN = "MY_SECRET_TOKEN";
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     return new Response(challenge, { status: 200 });
