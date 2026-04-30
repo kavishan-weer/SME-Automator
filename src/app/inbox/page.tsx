@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Layout, Menu, Typography, ConfigProvider, Input, Avatar, Badge, Switch, Button, Spin, message, Empty } from 'antd';
-import { SettingOutlined, AppstoreOutlined, LogoutOutlined, RobotOutlined, SearchOutlined, PaperClipOutlined, SendOutlined, MessageOutlined, TeamOutlined, LoadingOutlined } from '@ant-design/icons';
+import { SettingOutlined, AppstoreOutlined, LogoutOutlined, RobotOutlined, SearchOutlined, PaperClipOutlined, SendOutlined, MessageOutlined, TeamOutlined, LoadingOutlined, ReadOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -205,6 +205,7 @@ export default function InboxPage() {
         { key: '/dashboard', icon: <AppstoreOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
         { key: '/inbox', icon: <MessageOutlined />, label: <Link href="/inbox">Team Inbox</Link> },
         { key: '/customers', icon: <TeamOutlined />, label: <Link href="/customers">Customers</Link> },
+        { key: '/knowledge', icon: <ReadOutlined />, label: <Link href="/knowledge">Knowledge Base</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">Settings</Link> },
         { type: 'divider' as const },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }

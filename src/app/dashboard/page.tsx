@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Table, Button, Modal, Form, Input, message, Layout, Menu, Card, Row, Col, Statistic, Typography, ConfigProvider, Switch } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, ThunderboltOutlined, MessageOutlined, RobotOutlined, TeamOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, SettingOutlined, LogoutOutlined, ThunderboltOutlined, MessageOutlined, RobotOutlined, TeamOutlined, ReadOutlined } from '@ant-design/icons';
 import { createClient } from '../../lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -14,6 +14,8 @@ export default function Dashboard() {
     const [rules, setRules] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [editingRule, setEditingRule] = useState<any | null>(null);
+    const [form] = Form.useForm();
     const [messageApi, contextHolder] = message.useMessage();
     
     const supabase = useMemo(() => createClient(), []);
@@ -44,7 +46,7 @@ export default function Dashboard() {
         fetchRules();
     }, [fetchRules]);
 
-    const onAddRule = async (values: any) => {
+    const onSaveRule = async (values: any) => {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -52,21 +54,58 @@ export default function Dashboard() {
             return;
         }
 
-        const { error } = await supabase.from('automation_rules').insert([
-            {
-                keyword: values.keyword.toLowerCase().trim(),
-                reply_text: values.reply_text,
-                user_id: user.id
-            }
-        ]);
+        if (editingRule) {
+            // Update existing rule
+            const { data, error } = await supabase
+                .from('automation_rules')
+                .update({
+                    keyword: values.keyword.toLowerCase().trim(),
+                    reply_text: values.reply_text,
+                })
+                .eq('id', editingRule.id)
+                .eq('user_id', user.id)
+                .select();
 
-        if (error) {
-            messageApi.error("Failed to add Rule");
+            if (error) {
+                console.error("Update error:", error);
+                messageApi.error("Failed to update rule: " + error.message);
+            } else if (!data || data.length === 0) {
+                console.error("Update returned no rows — possible RLS issue");
+                messageApi.error("Failed to update rule. Please try again.");
+            } else {
+                messageApi.success(`Rule "${values.keyword}" updated successfully!`);
+                handleCloseModal();
+                fetchRules();
+            }
         } else {
-            messageApi.success("Rule added successfully!");
-            setIsModalOpen(false);
-            fetchRules();
+            // Add new rule
+            const { error } = await supabase.from('automation_rules').insert([
+                {
+                    keyword: values.keyword.toLowerCase().trim(),
+                    reply_text: values.reply_text,
+                    user_id: user.id
+                }
+            ]);
+
+            if (error) {
+                messageApi.error("Failed to add rule");
+            } else {
+                messageApi.success("Rule added successfully!");
+                handleCloseModal();
+                fetchRules();
+            }
         }
+    };
+
+    const handleEditRule = (record: any) => {
+        setEditingRule(record);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingRule(null);
+        form.resetFields();
     };
 
     const handleLogout = async () => {
@@ -118,7 +157,7 @@ export default function Dashboard() {
                         type="text"
                         icon={<EditOutlined />}
                         className="text-[#8696a0] hover:text-[#128C7E]"
-                        onClick={() => messageApi.info('Edit feature coming soon!')}
+                        onClick={() => handleEditRule(record)}
                     />
                     <Button
                         type="text"
@@ -149,6 +188,7 @@ export default function Dashboard() {
         { key: '/dashboard', icon: <AppstoreOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
         { key: '/inbox', icon: <MessageOutlined />, label: <Link href="/inbox">Team Inbox</Link> },
         { key: '/customers', icon: <TeamOutlined />, label: <Link href="/customers">Customers</Link> },
+        { key: '/knowledge', icon: <ReadOutlined />, label: <Link href="/knowledge">Knowledge Base</Link> },
         { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">Settings</Link> },
         { type: 'divider' as const },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', onClick: handleLogout }
@@ -220,7 +260,7 @@ export default function Dashboard() {
                         <Button 
                             type="primary" 
                             icon={<PlusOutlined />} 
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={() => { setEditingRule(null); form.resetFields(); setIsModalOpen(true); }}
                             size="large"
                             className="shadow-sm hover:shadow-md font-medium bg-[#25D366] hover:bg-[#1ebe5a] border-none ml-auto"
                         >
@@ -280,17 +320,29 @@ export default function Dashboard() {
                             />
                         </Card>
 
-                        {/* Add Rule Modal */}
+                        {/* Add/Edit Rule Modal */}
                         <Modal
-                            title={<span className="text-lg font-semibold text-[#111b21]">Create Automation Rule</span>}
+                            title={<span className="text-lg font-semibold text-[#111b21]">{editingRule ? 'Edit Automation Rule' : 'Create Automation Rule'}</span>}
                             open={isModalOpen}
-                            onCancel={() => setIsModalOpen(false)}
+                            onCancel={handleCloseModal}
                             footer={null}
                             centered
                             className="rounded-xl overflow-hidden"
+                            afterOpenChange={(open) => {
+                                if (open && editingRule) {
+                                    form.setFieldsValue({
+                                        keyword: editingRule.keyword,
+                                        reply_text: editingRule.reply_text,
+                                    });
+                                }
+                            }}
                         >
-                            <div className="mb-6 mt-2 text-[#54656f]">Define a keyword and the exact message your bot should reply with.</div>
-                            <Form layout="vertical" onFinish={onAddRule} size="large" requiredMark={false}>
+                            <div className="mb-6 mt-2 text-[#54656f]">
+                                {editingRule 
+                                    ? 'Update the keyword or reply message for this automation rule.' 
+                                    : 'Define a keyword and the exact message your bot should reply with.'}
+                            </div>
+                            <Form form={form} layout="vertical" onFinish={onSaveRule} size="large" requiredMark={false}>
                                 <Form.Item 
                                     label={<span className="font-medium text-[#3b4a54]">Trigger Keyword</span>} 
                                     name="keyword" 
@@ -306,11 +358,11 @@ export default function Dashboard() {
                                     <Input.TextArea rows={4} placeholder="Type the message that will be sent automatically..." className="bg-[#f0f2f5] border-none focus:bg-white focus:ring-2 focus:ring-[#25D366]/20 resize-none" />
                                 </Form.Item>
                                 <div className="flex gap-3 justify-end mt-8">
-                                    <Button onClick={() => setIsModalOpen(false)} size="large" className="font-medium">
+                                    <Button onClick={handleCloseModal} size="large" className="font-medium">
                                         Cancel
                                     </Button>
                                     <Button type="primary" htmlType="submit" size="large" className="font-medium bg-[#25D366] hover:bg-[#1ebe5a] border-none px-6">
-                                        Save Rule
+                                        {editingRule ? 'Update Rule' : 'Save Rule'}
                                     </Button>
                                 </div>
                             </Form>
