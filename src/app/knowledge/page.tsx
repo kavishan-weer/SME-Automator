@@ -47,6 +47,29 @@ export default function KnowledgeBasePage() {
         }
     };
 
+    const handleDeleteDocument = async (id: string) => {
+        messageApi.loading({ content: 'Deleting document...', key: 'delete' });
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("User not authenticated");
+
+            const response = await fetch(`/api/delete-document?id=${id}&userId=${user.id}`, {
+                method: 'DELETE',
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Delete failed');
+            }
+
+            messageApi.success({ content: 'Document deleted successfully', key: 'delete' });
+            fetchDocuments();
+        } catch (err: any) {
+            messageApi.error({ content: err.message || 'Delete failed', key: 'delete' });
+        }
+    };
+
     const handleLogout = async () => {
         router.push('/login');
     };
@@ -70,27 +93,29 @@ export default function KnowledgeBasePage() {
     const columns = [
         {
             title: 'Source Name',
-            dataIndex: 'name',
-            key: 'name',
+            dataIndex: 'file_name',
+            key: 'file_name',
             render: (text: string, record: any) => (
                 <div className="flex items-center gap-3 font-medium text-[#111b21] text-[15px]">
-                    {record.type === 'PDF' ? <FilePdfOutlined className="text-[#ff4d4f] text-xl" /> : <GlobalOutlined className="text-[#1677ff] text-xl" />}
+                    {text.toLowerCase().endsWith('.pdf') ? <FilePdfOutlined className="text-[#ff4d4f] text-xl" /> : <GlobalOutlined className="text-[#1677ff] text-xl" />}
                     {text}
                 </div>
             )
         },
         {
             title: 'Type',
-            dataIndex: 'type',
             key: 'type',
-            render: (type: string) => <Tag className="rounded-md border-none font-medium px-3 py-1 text-sm" color={type === 'PDF' ? 'volcano-inverse' : 'geekblue-inverse'}>{type}</Tag>
+            render: (_: any, record: any) => {
+                const type = record.file_name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'Website';
+                return <Tag className="rounded-md border-none font-medium px-3 py-1 text-sm" variant="solid" color={type === 'PDF' ? 'volcano' : 'geekblue'}>{type}</Tag>
+            }
         },
         {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
-                status === 'Active' ? (
+                status.toLowerCase() === 'active' ? (
                     <Tag icon={<CheckCircleOutlined />} color="success" className="rounded-full px-4 py-1.5 text-sm border-none bg-[#f6ffed] text-[#389e0d] font-medium">Active</Tag>
                 ) : (
                     <Tag icon={<SyncOutlined spin />} color="processing" className="rounded-full px-4 py-1.5 text-sm border-none bg-[#e6f4ff] text-[#1677ff] font-medium">Processing</Tag>
@@ -100,8 +125,14 @@ export default function KnowledgeBasePage() {
         {
             title: 'Action',
             key: 'action',
-            render: () => (
-                <Button type="text" danger icon={<DeleteOutlined className="text-lg" />} className="text-[#ff4d4f] hover:bg-[#fff2f0] rounded-lg h-10 w-10 flex items-center justify-center" />
+            render: (_: any, record: any) => (
+                <Button 
+                    type="text" 
+                    danger 
+                    icon={<DeleteOutlined className="text-lg" />} 
+                    className="text-[#ff4d4f] hover:bg-[#fff2f0] rounded-lg h-10 w-10 flex items-center justify-center" 
+                    onClick={() => handleDeleteDocument(record.id)}
+                />
             )
         }
     ];

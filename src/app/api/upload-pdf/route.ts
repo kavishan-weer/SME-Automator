@@ -71,9 +71,8 @@ export async function POST(request: Request) {
       .from('documents')
       .insert([
         {
-          name: file.name,
-          type: 'PDF',
-          status: 'Active',
+          file_name: file.name,
+          status: 'active',
           user_id: userId,
         }
       ])
@@ -100,6 +99,7 @@ export async function POST(request: Request) {
         .insert([
           {
             document_id: document.id,
+            user_id: userId,
             content: chunk,
             embedding: embedding, // 384D vector
           }
